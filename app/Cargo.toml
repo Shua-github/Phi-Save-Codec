@@ -1,0 +1,15 @@
+[package]
+name = "phi_save_codec"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+bitvec = "1.0.1"
+shua_struct_macro = { path = "../shua_struct_macro" }
+shua_struct = { path = "../shua_struct" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.145"
+base64 = "0.22.1"
