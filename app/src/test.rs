@@ -1,6 +1,6 @@
 use crate::phi_field::base::*;
 use bitvec::prelude::*;
-use shua_struct::field::{BinaryField, GetLen, Ctx};
+use shua_struct::field::{BinaryField, Ctx, GetLen};
 use shua_struct_macro::binary_struct;
 use std::collections::HashMap;
 

@@ -123,8 +123,9 @@ where
             arr[i] = v;
         }
 
-        if offset < 8 {
-            offset = 8;
+        let remainder = offset % 8;
+        if remainder != 0 {
+            offset += 8 - remainder;
         }
 
         Ok((arr, offset))

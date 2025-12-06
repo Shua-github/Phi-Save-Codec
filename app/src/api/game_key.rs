@@ -1,15 +1,17 @@
+use crate::api::main::malloc_str;
 use crate::phi_field::game_key::*;
 use base64::{Engine, engine::general_purpose};
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
 use std::collections::HashMap;
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 use std::os::raw::c_char;
 
 #[derive(Serialize, Deserialize)]
 struct SerializableGameKey {
-    key_list: SerializableKeyList,
+    #[serde(rename = "key_list")]
+    keys: Vec<SerializableKey>,
     lanota_read_keys: Vec<bool>,
     camellia_read_key: Vec<bool>,
     side_story4_begin_read_key: bool,
@@ -17,15 +19,8 @@ struct SerializableGameKey {
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableKeyList {
-    key_sum: u16,
-    key_list: Vec<SerializableKey>,
-}
-
-#[derive(Serialize, Deserialize)]
 struct SerializableKey {
     name: String,
-    length: u8,
     #[serde(rename = "type")]
     ktype: Vec<bool>,
     flag: Vec<bool>,
@@ -34,20 +29,16 @@ struct SerializableKey {
 impl From<GameKey> for SerializableGameKey {
     fn from(gk: GameKey) -> Self {
         SerializableGameKey {
-            key_list: SerializableKeyList {
-                key_sum: gk.key_list.key_sum.0,
-                key_list: gk
-                    .key_list
-                    .key_list
-                    .into_iter()
-                    .map(|k| SerializableKey {
-                        name: k.name.0,
-                        length: k.length,
-                        ktype: k.ktype.into_iter().map(|b| b.0).collect(),
-                        flag: k.flag,
-                    })
-                    .collect(),
-            },
+            keys: gk
+                .key_list
+                .key_list
+                .into_iter()
+                .map(|k| SerializableKey {
+                    name: k.name.0,
+                    ktype: k.ktype.into_iter().map(|b| b.0).collect(),
+                    flag: k.flag,
+                })
+                .collect(),
             lanota_read_keys: gk.lanota_read_keys.into_iter().map(|b| b.0).collect(),
             camellia_read_key: gk.camellia_read_key.into_iter().map(|b| b.0).collect(),
             side_story4_begin_read_key: gk.side_story4_begin_read_key,
@@ -58,26 +49,31 @@ impl From<GameKey> for SerializableGameKey {
 
 impl From<SerializableGameKey> for GameKey {
     fn from(sgk: SerializableGameKey) -> Self {
+        let key_sum = sgk.keys.len();
+        let key_list = sgk
+            .keys
+            .into_iter()
+            .map(|sk| {
+                let length = sk.flag.len() as u8 + 1; // flag 长度 + 1 = length
+                Key {
+                    name: PhiString(sk.name),
+                    length,
+                    ktype: sk
+                        .ktype
+                        .into_iter()
+                        .map(BitBool::from)
+                        .collect::<Vec<_>>()
+                        .try_into()
+                        .unwrap(),
+                    flag: sk.flag,
+                }
+            })
+            .collect();
+
         GameKey {
             key_list: KeyList {
-                key_sum: VarInt(sgk.key_list.key_sum),
-                key_list: sgk
-                    .key_list
-                    .key_list
-                    .into_iter()
-                    .map(|sk| Key {
-                        name: PhiString(sk.name),
-                        length: sk.length,
-                        ktype: sk
-                            .ktype
-                            .into_iter()
-                            .map(BitBool::from)
-                            .collect::<Vec<_>>()
-                            .try_into()
-                            .unwrap(),
-                        flag: sk.flag,
-                    })
-                    .collect(),
+                key_sum: VarInt(key_sum as u16),
+                key_list,
             },
             lanota_read_keys: sgk
                 .lanota_read_keys
@@ -131,10 +127,7 @@ pub extern "C" fn parse_game_key(base64_str_ptr: *const c_char) -> *mut c_char {
         Err(_) => return std::ptr::null_mut(),
     };
 
-    match CString::new(json) {
-        Ok(cstr) => cstr.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    unsafe { malloc_str(json) }
 }
 
 #[unsafe(no_mangle)]
@@ -160,8 +153,5 @@ pub extern "C" fn build_game_key(json_ptr: *const c_char) -> *mut c_char {
 
     let base64_str = general_purpose::STANDARD.encode(&bytes_vec);
 
-    match CString::new(base64_str) {
-        Ok(cstr) => cstr.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
+    unsafe { malloc_str(base64_str) }
 }
