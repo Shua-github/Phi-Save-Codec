@@ -1,12 +1,9 @@
-use crate::api::main::malloc_str;
+use crate::api::{Data, malloc_bytes};
 use crate::phi_field::game_key::*;
-use base64::{Engine, engine::general_purpose};
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
 use std::collections::HashMap;
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 #[derive(Serialize, Deserialize)]
 struct SerializableGameKey {
@@ -96,62 +93,68 @@ impl From<SerializableGameKey> for GameKey {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn parse_game_key(base64_str_ptr: *const c_char) -> *mut c_char {
-    if base64_str_ptr.is_null() {
-        return std::ptr::null_mut();
+pub extern "C" fn parse_game_key(data_ptr: *const u8, data_len: usize) -> Data {
+    if data_ptr.is_null() || data_len == 0 {
+        return Data {
+            len: 0,
+            ptr: std::ptr::null_mut(),
+        };
     }
 
-    let c_str = unsafe { CStr::from_ptr(base64_str_ptr) };
-    let base64_str = match c_str.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
 
-    let bytes = match general_purpose::STANDARD.decode(base64_str) {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    let bits = BitSlice::<u8, Lsb0>::from_slice(&bytes);
+    let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
     let mut ctx = HashMap::new();
 
     let (game_key, _) = match GameKey::parse(&bits, &mut ctx, None, None) {
         Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
+        Err(_) => {
+            return Data {
+                len: 0,
+                ptr: std::ptr::null_mut(),
+            };
+        }
     };
 
     let serializable = SerializableGameKey::from(game_key);
 
-    let json = match serde_json::to_string(&serializable) {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+    let json = match serde_json::to_vec(&serializable) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return Data {
+                len: 0,
+                ptr: std::ptr::null_mut(),
+            };
+        }
     };
 
-    unsafe { malloc_str(json) }
+    unsafe { malloc_bytes(json) }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn build_game_key(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() {
-        return std::ptr::null_mut();
+pub extern "C" fn build_game_key(data_ptr: *const u8, data_len: usize) -> Data {
+    if data_ptr.is_null() || data_len == 0 {
+        return Data {
+            len: 0,
+            ptr: std::ptr::null_mut(),
+        };
     }
 
-    let c_str = unsafe { CStr::from_ptr(json_ptr) };
-    let json_str = match c_str.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
+    let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
 
-    let serializable: SerializableGameKey = match serde_json::from_str(json_str) {
+    let serializable: SerializableGameKey = match serde_json::from_slice(json_bytes) {
         Ok(v) => v,
-        Err(_) => return std::ptr::null_mut(),
+        Err(_) => {
+            return Data {
+                len: 0,
+                ptr: std::ptr::null_mut(),
+            };
+        }
     };
 
     let game_key: GameKey = GameKey::from(serializable);
     let bitvec = game_key.build();
     let bytes_vec = bitvec.into_vec();
 
-    let base64_str = general_purpose::STANDARD.encode(&bytes_vec);
-
-    unsafe { malloc_str(base64_str) }
+    unsafe { malloc_bytes(bytes_vec) }
 }

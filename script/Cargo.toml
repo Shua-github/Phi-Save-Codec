@@ -1,0 +1,8 @@
+[package]
+name = "script"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+multi_value_gen = "0.1.0"
+walrus = "0.24.4"

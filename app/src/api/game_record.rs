@@ -1,13 +1,12 @@
-use crate::api::main::malloc_str;
+use crate::api::{Data, malloc_bytes};
 use crate::phi_field::base::*;
 use crate::phi_field::game_record::{GameRecord, LevelRecord, SongEntry};
-use base64::{Engine, engine::general_purpose};
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
 use std::collections::HashMap;
-use std::ffi::CStr;
-use std::os::raw::c_char;
+
+static DIFF_ORDER: [&str; 5] = ["EZ", "HD", "IN", "AT", "Legacy"];
 
 #[derive(Serialize, Deserialize)]
 struct SerializableLevelRecord {
@@ -15,15 +14,11 @@ struct SerializableLevelRecord {
     acc: f32,
     fc: bool,
 }
-
 type SerializableSongRecord = HashMap<String, SerializableLevelRecord>;
-
 #[derive(Serialize, Deserialize)]
 struct SerializableGameRecord(HashMap<String, SerializableSongRecord>);
-
 impl From<GameRecord> for SerializableGameRecord {
     fn from(gr: GameRecord) -> Self {
-        let diffs = ["EZ", "HD", "IN", "AT", "Legacy"];
         let mut map: HashMap<String, SerializableSongRecord> = HashMap::new();
         for song in gr.song_list {
             let mut song_map: HashMap<String, SerializableLevelRecord> = HashMap::new();
@@ -32,7 +27,7 @@ impl From<GameRecord> for SerializableGameRecord {
                 if song.unlock[i].0 {
                     let level = &song.levels[level_idx];
                     song_map.insert(
-                        diffs[i].to_string(),
+                        DIFF_ORDER[i].to_string(),
                         SerializableLevelRecord {
                             score: level.score,
                             acc: level.acc,
@@ -47,22 +42,17 @@ impl From<GameRecord> for SerializableGameRecord {
         SerializableGameRecord(map)
     }
 }
-
 impl From<SerializableGameRecord> for GameRecord {
     fn from(sgr: SerializableGameRecord) -> Self {
-        let diff_map: HashMap<&str, usize> =
-            HashMap::from([("EZ", 0), ("HD", 1), ("IN", 2), ("AT", 3), ("Legacy", 4)]);
-        let diff_order = ["EZ", "HD", "IN", "AT", "Legacy"];
         let mut song_list: Vec<SongEntry> = Vec::new();
         for (name, song_map) in sgr.0 {
             let mut unlock = [BitBool(false); 5];
             let mut fc = [BitBool(false); 5];
             let mut levels: Vec<LevelRecord> = Vec::new();
-            for &diff in diff_order.iter() {
-                if let Some(rec) = song_map.get(diff) {
-                    let idx = *diff_map.get(diff).unwrap();
-                    unlock[idx] = BitBool(true);
-                    fc[idx] = BitBool(rec.fc);
+            for (i, diff) in DIFF_ORDER.iter().enumerate() {
+                if let Some(rec) = song_map.get(*diff) {
+                    unlock[i] = BitBool(true);
+                    fc[i] = BitBool(rec.fc);
                     levels.push(LevelRecord {
                         score: rec.score,
                         acc: rec.acc,
@@ -85,50 +75,66 @@ impl From<SerializableGameRecord> for GameRecord {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn parse_game_record(base64_str_ptr: *const c_char) -> *mut c_char {
-    if base64_str_ptr.is_null() {
-        return std::ptr::null_mut();
+pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize) -> Data {
+    if data_ptr.is_null() || data_len == 0 {
+        return Data {
+            len: 0,
+            ptr: std::ptr::null_mut(),
+        };
     }
-    let c_str = unsafe { CStr::from_ptr(base64_str_ptr) };
-    let base64_str = match c_str.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let bytes = match general_purpose::STANDARD.decode(base64_str) {
-        Ok(d) => d,
-        Err(_) => return std::ptr::null_mut(),
-    };
+
+    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
+
     let bits = BitSlice::<u8, Lsb0>::from_slice(&bytes);
     let mut ctx = HashMap::new();
     let (game_record, _) = match GameRecord::parse(bits, &mut ctx, None, None) {
         Ok(r) => r,
-        Err(_) => return std::ptr::null_mut(),
+        Err(_) => {
+            return Data {
+                len: 0,
+                ptr: std::ptr::null_mut(),
+            };
+        }
     };
+
     let serializable = SerializableGameRecord::from(game_record);
-    let json = match serde_json::to_string(&serializable) {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
+    let json = match serde_json::to_vec(&serializable) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return Data {
+                len: 0,
+                ptr: std::ptr::null_mut(),
+            };
+        }
     };
-    unsafe { malloc_str(json) }
+
+    unsafe { malloc_bytes(json) }
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn build_game_record(json_ptr: *const c_char) -> *mut c_char {
-    if json_ptr.is_null() {
-        return std::ptr::null_mut();
+pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize) -> Data {
+    if data_ptr.is_null() || data_len == 0 {
+        return Data {
+            len: 0,
+            ptr: std::ptr::null_mut(),
+        };
     }
-    let c_str = unsafe { CStr::from_ptr(json_ptr) };
-    let json_str = match c_str.to_str() {
-        Ok(s) => s,
-        Err(_) => return std::ptr::null_mut(),
-    };
-    let serializable: SerializableGameRecord = match serde_json::from_str(json_str) {
+
+    let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
+
+    let serializable: SerializableGameRecord = match serde_json::from_slice(json_bytes) {
         Ok(v) => v,
-        Err(_) => return std::ptr::null_mut(),
+        Err(_) => {
+            return Data {
+                len: 0,
+                ptr: std::ptr::null_mut(),
+            };
+        }
     };
+
     let game_record: GameRecord = GameRecord::from(serializable);
     let bitvec = game_record.build();
-    let bytes_vec = bitvec.into_vec();
-    let base64_str = general_purpose::STANDARD.encode(&bytes_vec);
-    unsafe { malloc_str(base64_str) }
+    let bytes = bitvec.into_vec();
+
+    unsafe { malloc_bytes(bytes) }
 }
