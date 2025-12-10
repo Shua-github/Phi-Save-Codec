@@ -1,4 +1,4 @@
-use crate::api::{Data, malloc_data, empty_data};
+use crate::api::{Data, empty_data, malloc_data};
 use crate::phi_field::base::*;
 use crate::phi_field::game_record::{GameRecord, LevelRecord, SongEntry};
 use bitvec::prelude::*;
@@ -79,9 +79,7 @@ pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize)
     if data_ptr.is_null() || data_len == 0 {
         return empty_data();
     }
-
     let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-
     let bits = BitSlice::<u8, Lsb0>::from_slice(&bytes);
     let (game_record, _) = match GameRecord::parse(bits, &None) {
         Ok(r) => r,
@@ -91,24 +89,22 @@ pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize)
     };
 
     let serializable = SerializableGameRecord::from(game_record);
+
     let json = match serde_json::to_vec(&serializable) {
         Ok(bytes) => bytes,
         Err(_) => {
             return empty_data();
         }
     };
-
     unsafe { malloc_data(json) }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize) -> Data {
     if data_ptr.is_null() || data_len == 0 {
-        return empty_data()
+        return empty_data();
     }
-
     let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-
     let serializable: SerializableGameRecord = match serde_json::from_slice(json_bytes) {
         Ok(v) => v,
         Err(_) => {
@@ -117,6 +113,7 @@ pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize)
     };
 
     let game_record: GameRecord = GameRecord::from(serializable);
+
     let bitvec = match game_record.build(&None) {
         Ok(v) => v,
         Err(_) => {
@@ -124,6 +121,5 @@ pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize)
         }
     };
     let bytes = bitvec.into_vec();
-
     unsafe { malloc_data(bytes) }
 }

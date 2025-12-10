@@ -127,7 +127,7 @@ where
             }
             arr[i] = v;
         }
-        
+
         Ok((arr, offset))
     }
 
