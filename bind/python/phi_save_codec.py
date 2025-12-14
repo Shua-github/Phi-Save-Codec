@@ -1,10 +1,18 @@
-import json
+import msgpack
 from typing import Any
 from wasmtime import Store, Module, Instance
 import ctypes
 
 FUNCS = ["game_key", "game_record", "user"]
-        
+class Codec:
+    @staticmethod
+    def loads(data: bytes) -> Any:
+        return msgpack.unpackb(data)
+    
+    @staticmethod
+    def dumps(obj: Any) -> bytes:
+        return msgpack.packb(obj)
+
 class PhiSaveCodec:
     def __init__(self, wasm_path: str = "phi_save_codec.wasm",funcs:list[str] | None = None):
         if funcs is None:
@@ -57,11 +65,11 @@ class PhiSaveCodec:
 
     def _call_parser(self, wasm_func, data: bytes) -> dict[str, Any]:
         out = self._call_wasm(wasm_func, data)
-        return json.loads(out)
+        return Codec.loads(out)
 
     def _call_builder(self, wasm_func, data_dict: dict[str, Any]) -> bytes:
-        json_str = json.dumps(data_dict, ensure_ascii=False).encode("utf-8")
-        out = self._call_wasm(wasm_func, json_str)
+        data = Codec.dumps(data_dict)
+        out = self._call_wasm(wasm_func, data)
         return out
 
     def _make_parser(self, wasm_func):

@@ -47,7 +47,7 @@ pub extern "C" fn parse_user(data_ptr: *const u8, data_len: usize) -> Data {
         Err(_) => return empty_data(),
     };
 
-    let json = match serde_json::to_vec(&SerializableUser::from(user)) {
+    let json = match rmp_serde::to_vec(&SerializableUser::from(user)) {
         Ok(v) => v,
         Err(_) => return empty_data(),
     };
@@ -60,7 +60,7 @@ pub extern "C" fn build_user(data_ptr: *const u8, data_len: usize) -> Data {
         return empty_data();
     }
     let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let serializable: SerializableUser = match serde_json::from_slice(bytes) {
+    let serializable: SerializableUser = match rmp_serde::from_slice(bytes) {
         Ok(v) => v,
         Err(_) => return empty_data(),
     };

@@ -90,7 +90,7 @@ pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize)
 
     let serializable = SerializableGameRecord::from(game_record);
 
-    let json = match serde_json::to_vec(&serializable) {
+    let json = match rmp_serde::to_vec(&serializable) {
         Ok(bytes) => bytes,
         Err(_) => {
             return empty_data();
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize)
         return empty_data();
     }
     let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let serializable: SerializableGameRecord = match serde_json::from_slice(json_bytes) {
+    let serializable: SerializableGameRecord = match rmp_serde::from_slice(json_bytes) {
         Ok(v) => v,
         Err(_) => {
             return empty_data();
