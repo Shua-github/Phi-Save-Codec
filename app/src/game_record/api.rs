@@ -4,7 +4,7 @@ use crate::phi_base::*;
 use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
 use shua_struct::field::BinaryField;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 static DIFF_ORDER: [&str; 5] = ["EZ", "HD", "IN", "AT", "Legacy"];
 
@@ -14,14 +14,14 @@ struct SerializableLevelRecord {
     acc: f32,
     fc: bool,
 }
-type SerializableSongRecord = HashMap<String, SerializableLevelRecord>;
+type SerializableSongRecord = BTreeMap<String, SerializableLevelRecord>;
 #[derive(Serialize, Deserialize)]
-struct SerializableGameRecord(HashMap<String, SerializableSongRecord>);
+struct SerializableGameRecord(BTreeMap<String, SerializableSongRecord>);
 impl From<GameRecord> for SerializableGameRecord {
     fn from(gr: GameRecord) -> Self {
-        let mut map: HashMap<String, SerializableSongRecord> = HashMap::new();
+        let mut map: BTreeMap<String, SerializableSongRecord> = BTreeMap::new();
         for song in gr.song_list {
-            let mut song_map: HashMap<String, SerializableLevelRecord> = HashMap::new();
+            let mut song_map: BTreeMap<String, SerializableLevelRecord> = BTreeMap::new();
             let mut level_idx = 0;
             for i in 0..5 {
                 if song.unlock[i] {
