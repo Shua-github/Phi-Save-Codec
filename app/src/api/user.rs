@@ -47,7 +47,7 @@ pub extern "C" fn parse_user(data_ptr: *const u8, data_len: usize) -> Data {
         Err(_) => return empty_data(),
     };
 
-    let json = match rmp_serde::to_vec(&SerializableUser::from(user)) {
+    let json = match rmp_serde::to_vec_named(&SerializableUser::from(user)) {
         Ok(v) => v,
         Err(_) => return empty_data(),
     };

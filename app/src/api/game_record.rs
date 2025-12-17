@@ -90,7 +90,7 @@ pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize)
 
     let serializable = SerializableGameRecord::from(game_record);
 
-    let json = match rmp_serde::to_vec(&serializable) {
+    let json = match rmp_serde::to_vec_named(&serializable) {
         Ok(bytes) => bytes,
         Err(_) => {
             return empty_data();

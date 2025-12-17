@@ -86,7 +86,7 @@ pub extern "C" fn parse_game_key(data_ptr: *const u8, data_len: usize) -> Data {
         Err(_) => return empty_data(),
     };
 
-    let json = match rmp_serde::to_vec(&SerializableGameKey::from(game_key)) {
+    let json = match rmp_serde::to_vec_named(&SerializableGameKey::from(game_key)) {
         Ok(v) => v,
         Err(_) => return empty_data(),
     };
