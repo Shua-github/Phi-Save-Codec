@@ -1,4 +1,3 @@
-pub mod api;
 pub mod phi_base;
 
 pub mod game_key;
@@ -9,3 +8,6 @@ pub mod user;
 
 #[cfg(test)]
 mod test;
+
+#[cfg(feature = "c_abi")]
+mod c_api;

@@ -1,34 +1,31 @@
 use super::field::{Level, MultiLevel, Summary};
-use crate::api::{Data, empty_data, malloc_data};
 use crate::phi_base::*;
-use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
-use shua_struct::field::BinaryField;
 
 #[derive(Serialize, Deserialize)]
-struct SerializableLevel {
-    clear: u16,
-    fc: u16,
-    phi: u16,
+pub struct SerializableLevel {
+    pub clear: u16,
+    pub fc: u16,
+    pub phi: u16,
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableMultiLevel {
-    ez: SerializableLevel,
-    hd: SerializableLevel,
+pub struct SerializableMultiLevel {
+    pub ez: SerializableLevel,
+    pub hd: SerializableLevel,
     #[serde(rename = "in")]
-    r#in: SerializableLevel,
-    at: SerializableLevel,
+    pub r#in: SerializableLevel,
+    pub at: SerializableLevel,
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableSummary {
-    save_version: u8,
-    challenge_mode_rank: u16,
-    rks: f32,
-    game_version: u16,
-    avatar: String,
-    level: SerializableMultiLevel,
+pub struct SerializableSummary {
+    pub save_version: u8,
+    pub challenge_mode_rank: u16,
+    pub rks: f32,
+    pub game_version: u16,
+    pub avatar: String,
+    pub level: SerializableMultiLevel,
 }
 
 impl From<Level> for SerializableLevel {
@@ -97,51 +94,4 @@ impl From<SerializableSummary> for Summary {
             level: s.level.into(),
         }
     }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn parse_summary(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
-
-    let (summary, _) = match Summary::parse(bits, &None) {
-        Ok(r) => r,
-        Err(_) => return empty_data(),
-    };
-
-    let serializable = SerializableSummary::from(summary);
-
-    let bin = match rmp_serde::to_vec_named(&serializable) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    unsafe { malloc_data(bin) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn build_summary(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-
-    let serializable: SerializableSummary = match rmp_serde::from_slice(bytes) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    let summary: Summary = Summary::from(serializable);
-
-    let bitvec = match summary.build(&None) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    unsafe { malloc_data(bitvec.into_vec()) }
 }

@@ -1,9 +1,9 @@
+use multi_value_gen::parse;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 use walrus::ValType;
-use multi_value_gen::parse;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let status = Command::new("cargo")
@@ -12,6 +12,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--lib",
             "-p",
             "phi_save_codec",
+            "--features",
+            "c_abi",
             "--release",
             "--target",
             "wasm32-unknown-unknown",

@@ -1,26 +1,23 @@
 use super::field::*;
-use crate::api::{Data, empty_data, malloc_data};
 use crate::phi_base::*;
-use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
-use shua_struct::field::BinaryField;
 
 #[derive(Serialize, Deserialize)]
-struct SerializableGameKey {
+pub struct SerializableGameKey {
     #[serde(rename = "key_list")]
-    keys: Vec<SerializableKey>,
-    lanota_read_keys: [bool; 6],
-    camellia_read_key: [bool; 8],
-    side_story4_begin_read_key: bool,
-    old_score_cleared_v390: bool,
+    pub keys: Vec<SerializableKey>,
+    pub lanota_read_keys: [bool; 6],
+    pub camellia_read_key: [bool; 8],
+    pub side_story4_begin_read_key: bool,
+    pub old_score_cleared_v390: bool,
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableKey {
-    name: String,
+pub struct SerializableKey {
+    pub name: String,
     #[serde(rename = "type")]
-    ktype: [bool; 5],
-    flag: Vec<bool>,
+    pub ktype: [bool; 5],
+    pub flag: Vec<bool>,
 }
 
 impl From<GameKey> for SerializableGameKey {
@@ -72,43 +69,4 @@ impl From<SerializableGameKey> for GameKey {
             old_score_cleared_v390: sgk.old_score_cleared_v390,
         }
     }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn parse_game_key(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
-
-    let (game_key, _) = match GameKey::parse(&bits, &None) {
-        Ok(r) => r,
-        Err(_) => return empty_data(),
-    };
-
-    let json = match rmp_serde::to_vec_named(&SerializableGameKey::from(game_key)) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-    unsafe { malloc_data(json) }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn build_game_key(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let serializable: SerializableGameKey = match rmp_serde::from_slice(bytes) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    let bitvec = match GameKey::from(serializable).build(&None) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    unsafe { malloc_data(bitvec.into_vec()) }
 }

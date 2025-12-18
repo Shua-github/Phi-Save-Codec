@@ -1,22 +1,20 @@
 use super::field::{GameRecord, LevelRecord, SongEntry};
-use crate::api::{Data, empty_data, malloc_data};
 use crate::phi_base::*;
-use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
-use shua_struct::field::BinaryField;
 use std::collections::BTreeMap;
 
 static DIFF_ORDER: [&str; 5] = ["EZ", "HD", "IN", "AT", "Legacy"];
 
 #[derive(Serialize, Deserialize)]
-struct SerializableLevelRecord {
-    score: u32,
-    acc: f32,
-    fc: bool,
+pub struct SerializableLevelRecord {
+    pub score: u32,
+    pub acc: f32,
+    pub fc: bool,
 }
-type SerializableSongRecord = BTreeMap<String, SerializableLevelRecord>;
+pub type SerializableSongRecord = BTreeMap<String, SerializableLevelRecord>;
 #[derive(Serialize, Deserialize)]
-struct SerializableGameRecord(BTreeMap<String, SerializableSongRecord>);
+pub struct SerializableGameRecord(BTreeMap<String, SerializableSongRecord>);
+
 impl From<GameRecord> for SerializableGameRecord {
     fn from(gr: GameRecord) -> Self {
         let mut map: BTreeMap<String, SerializableSongRecord> = BTreeMap::new();
@@ -72,53 +70,4 @@ impl From<SerializableGameRecord> for GameRecord {
             song_list,
         }
     }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn parse_game_record(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let bits = BitSlice::<u8, Lsb0>::from_slice(&bytes);
-    let (game_record, _) = match GameRecord::parse(bits, &None) {
-        Ok(r) => r,
-        Err(_) => {
-            return empty_data();
-        }
-    };
-
-    let serializable = SerializableGameRecord::from(game_record);
-
-    let json = match rmp_serde::to_vec_named(&serializable) {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            return empty_data();
-        }
-    };
-    unsafe { malloc_data(json) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn build_game_record(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-    let json_bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let serializable: SerializableGameRecord = match rmp_serde::from_slice(json_bytes) {
-        Ok(v) => v,
-        Err(_) => {
-            return empty_data();
-        }
-    };
-
-    let game_record: GameRecord = GameRecord::from(serializable);
-
-    let bitvec = match game_record.build(&None) {
-        Ok(v) => v,
-        Err(_) => {
-            return empty_data();
-        }
-    };
-    unsafe { malloc_data(bitvec.into_vec()) }
 }

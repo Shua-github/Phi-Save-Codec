@@ -1,49 +1,46 @@
 use super::field::{Base, Chapter8Base, GameProgress, Money};
-use crate::api::{Data, empty_data, malloc_data};
 use crate::phi_base::*;
-use bitvec::prelude::*;
 use serde::{Deserialize, Serialize};
-use shua_struct::field::BinaryField;
 
 #[derive(Serialize, Deserialize)]
-struct SerializableBase {
-    is_first_run: bool,
-    legacy_chapter_finished: bool,
-    already_show_collection_tip: bool,
-    already_show_auto_unlock_in_tip: bool,
+pub struct SerializableBase {
+    pub is_first_run: bool,
+    pub legacy_chapter_finished: bool,
+    pub already_show_collection_tip: bool,
+    pub already_show_auto_unlock_in_tip: bool,
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableMoney {
-    kib: u16,
-    mib: u16,
-    gib: u16,
-    tib: u16,
-    pib: u16,
+pub struct SerializableMoney {
+    pub kib: u16,
+    pub mib: u16,
+    pub gib: u16,
+    pub tib: u16,
+    pub pib: u16,
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableChapter8Base {
-    unlock_begin: bool,
-    unlock_second_phase: bool,
-    passed: bool,
+pub struct SerializableChapter8Base {
+    pub unlock_begin: bool,
+    pub unlock_second_phase: bool,
+    pub passed: bool,
 }
 
 #[derive(Serialize, Deserialize)]
-struct SerializableGameProgress {
-    base: SerializableBase,
-    completed: String,
-    song_update_info: u16,
-    challenge_mode_rank: u16,
-    money: SerializableMoney,
-    unlock_flag_of_spasmodic: [bool; 4],
-    unlock_flag_of_igallta: [bool; 4],
-    unlock_flag_of_rrharil: [bool; 4],
-    flag_of_song_record_key: [bool; 8],
-    random_version_unlocked: [bool; 6],
-    chapter8_base: SerializableChapter8Base,
-    chapter8_song_unlocked: [bool; 6],
-    flag_of_song_record_key_takumi: [bool; 3],
+pub struct SerializableGameProgress {
+    pub base: SerializableBase,
+    pub completed: String,
+    pub song_update_info: u16,
+    pub challenge_mode_rank: u16,
+    pub money: SerializableMoney,
+    pub unlock_flag_of_spasmodic: [bool; 4],
+    pub unlock_flag_of_igallta: [bool; 4],
+    pub unlock_flag_of_rrharil: [bool; 4],
+    pub flag_of_song_record_key: [bool; 8],
+    pub random_version_unlocked: [bool; 6],
+    pub chapter8_base: SerializableChapter8Base,
+    pub chapter8_song_unlocked: [bool; 6],
+    pub flag_of_song_record_key_takumi: [bool; 3],
 }
 
 impl From<Base> for SerializableBase {
@@ -150,51 +147,4 @@ impl From<SerializableGameProgress> for GameProgress {
             flag_of_song_record_key_takumi: g.flag_of_song_record_key_takumi,
         }
     }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn parse_game_progress(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let bits = BitSlice::<u8, Lsb0>::from_slice(bytes);
-
-    let (gp, _) = match GameProgress::parse(bits, &None) {
-        Ok(r) => r,
-        Err(_) => return empty_data(),
-    };
-
-    let serializable = SerializableGameProgress::from(gp);
-
-    let buf = match rmp_serde::to_vec_named(&serializable) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    unsafe { malloc_data(buf) }
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn build_game_progress(data_ptr: *const u8, data_len: usize) -> Data {
-    if data_ptr.is_null() || data_len == 0 {
-        return empty_data();
-    }
-
-    let bytes = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-
-    let serializable: SerializableGameProgress = match rmp_serde::from_slice(bytes) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    let gp: GameProgress = serializable.into();
-
-    let bitvec = match gp.build(&None) {
-        Ok(v) => v,
-        Err(_) => return empty_data(),
-    };
-
-    unsafe { malloc_data(bitvec.into_vec()) }
 }

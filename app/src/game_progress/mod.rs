@@ -1,2 +1,2 @@
-mod api;
-mod field;
+pub mod field;
+pub mod serde;
