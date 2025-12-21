@@ -5,7 +5,7 @@ use shua_struct_macro::binary_struct;
 use std::cell::Cell;
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct Key {
     pub name: PhiString,
     pub length: u8,
@@ -21,7 +21,7 @@ impl Key {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct KeyList {
     pub key_sum: VarInt,
     #[binary_field(size_field = key_sum)]
@@ -29,7 +29,7 @@ pub struct KeyList {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct GameKey {
     pub key_list: KeyList,
     #[binary_field(align = 8)]

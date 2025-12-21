@@ -5,7 +5,7 @@ use shua_struct_macro::binary_struct;
 use std::cell::Cell;
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct User {
     #[binary_field(align = 8)]
     pub show_player_id: bool,

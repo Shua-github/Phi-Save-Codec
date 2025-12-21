@@ -5,7 +5,7 @@ use shua_struct_macro::binary_struct;
 use std::cell::Cell;
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct Level {
     pub clear: u16,
     pub fc: u16,
@@ -13,7 +13,7 @@ pub struct Level {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct MultiLevel {
     pub ez: Level,
     pub hd: Level,
@@ -22,7 +22,7 @@ pub struct MultiLevel {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct Summary {
     pub save_version: u8,
     pub challenge_mode_rank: u16,

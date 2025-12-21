@@ -5,13 +5,13 @@ use shua_struct_macro::binary_struct;
 use std::cell::Cell;
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct LevelRecord {
     pub score: u32,
     pub acc: f32,
 }
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct SongEntry {
     pub name: PhiString,
     pub length: VarInt,
@@ -28,7 +28,7 @@ impl SongEntry {
     }
 }
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct GameRecord {
     pub song_sum: VarInt,
     #[binary_field(size_field = song_sum)]

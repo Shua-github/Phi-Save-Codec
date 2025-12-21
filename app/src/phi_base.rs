@@ -4,7 +4,7 @@ use shua_struct::field::{BinaryField, Options};
 #[derive(Debug, Default, Clone, Copy)]
 pub struct VarInt(pub u16);
 
-impl BinaryField for VarInt {
+impl BinaryField<Lsb0> for VarInt {
     fn parse(bits: &BitSlice<u8, Lsb0>, _opts: &Option<Options>) -> Result<(Self, usize), String> {
         if bits.len() < 8 {
             return Err("VarInt parse error: not enough bits".to_string());
@@ -51,7 +51,7 @@ impl From<VarInt> for usize {
 
 #[derive(Debug, Default)]
 pub struct PhiString(pub String);
-impl BinaryField for PhiString {
+impl BinaryField<Lsb0> for PhiString {
     fn parse(bits: &BitSlice<u8, Lsb0>, opts: &Option<Options>) -> Result<(Self, usize), String> {
         let (varint, offset_bits) = VarInt::parse(bits, opts)?;
         let length_bytes = varint.0 as usize;

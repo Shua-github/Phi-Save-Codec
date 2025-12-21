@@ -5,7 +5,7 @@ use shua_struct_macro::binary_struct;
 use std::cell::Cell;
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct Base {
     pub is_first_run: bool,
     pub legacy_chapter_finished: bool,
@@ -14,7 +14,7 @@ pub struct Base {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct Money {
     pub kib: VarInt,
     pub mib: VarInt,
@@ -24,7 +24,7 @@ pub struct Money {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct Chapter8Base {
     pub unlock_begin: bool,
     pub unlock_second_phase: bool,
@@ -32,7 +32,7 @@ pub struct Chapter8Base {
 }
 
 #[derive(Debug, Default)]
-#[binary_struct]
+#[binary_struct(bit_order = Lsb0)]
 pub struct GameProgress {
     #[binary_field(align = 8)]
     pub base: Base,
